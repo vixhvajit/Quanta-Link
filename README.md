@@ -226,6 +226,17 @@ find a bug in the implementation. What remains, and how the design handles it:
   per-packet overhead, CPU load and power.
 - [ ] **M5 — Write-up.** Formal analysis of the handshake (Tamarin or
   ProVerif), results, and the hook for a QKD key source.
+- [ ] **M6 — Video channel.** Secure FPV video as a second Quanta-Link
+  channel, not a separate protocol. The same handshake derives separate keys
+  for video and telemetry in each direction. The encoded stream (H.264 or
+  H.265 over RTP) is protected with forward error correction first, then each
+  over-the-air packet is encrypted and authenticated on its own, so a lost
+  packet never breaks the next one and forged packets are dropped before they
+  reach the error-correction decoder. It runs as a bump in the wire in front
+  of wfb-ng, which takes plain UDP input, or OpenHD if it can take video from
+  a local process. It needs a Linux board with a hardware video encoder, such
+  as a Raspberry Pi 4. Constant-bitrate padding, against traffic analysis of
+  the bitrate, is optional.
 
 Later: run both transports at once and fail over between them, so the drone
 keeps a protected control link if one band is jammed.
