@@ -238,8 +238,54 @@ find a bug in the implementation. What remains, and how the design handles it:
   as a Raspberry Pi 4. Constant-bitrate padding, against traffic analysis of
   the bitrate, is optional.
 
-Later: run both transports at once and fail over between them, so the drone
-keeps a protected control link if one band is jammed.
+## Ideas
+
+Not yet scheduled. These come after the roadmap above.
+
+### Multi-link failover
+
+Run both transports at once and fail over between them, so the drone keeps a
+protected control link if one band is jammed.
+
+### Anti-jamming: keyed, adaptive frequency hopping
+
+Quanta-Link protects what is sent (COMSEC). A jammer can still stop it from
+arriving. The idea is to protect the transmission itself (TRANSEC) with
+frequency hopping that is both secret and adaptive:
+
+- **Keyed hop sequence.** The hop pattern is generated from the Quanta-Link
+  session key with a pseudorandom function, so a jammer cannot predict the next
+  channel. A SiK radio derives its hop sequence from the NETID, which is
+  predictable. One key then protects both what is sent and where it is sent.
+- **Adaptive hopping.** The radio watches the spectrum, classifies the jammer
+  (barrage, spot, sweep, pulsed or follower), and responds: blacklisting
+  jammed channels, hopping faster, changing power, adding spreading or
+  stronger error correction, or switching band.
+- **Hopping faster than a follower jammer.** A follower jammer detects a hop,
+  retunes and transmits. If the dwell time on each channel is shorter than the
+  jammer's reaction time, it always arrives too late.
+
+It would be built in two levels:
+
+1. **Microcontroller level.** An ESP32 running an RTOS drives a LoRa or FSK
+   radio chip (SX1262 for sub-GHz, SX1280 for 2.4 GHz). It provides the keyed
+   hop sequence and blacklists channels from packet loss and signal strength
+   statistics, as Bluetooth's adaptive frequency hopping does.
+2. **FPGA level.** A software-defined radio with an FPGA, such as the
+   ADALM-PLUTO (AD9363 with a Zynq), for wideband real-time spectrum sensing,
+   jammer classification (rules, or a small CNN on the spectrogram) and hop
+   rates fast enough to defeat follower jammers. The hardest part is keeping
+   both ends synchronised on the hop sequence and the blacklist while being
+   jammed, which needs a pre-agreed fallback pattern.
+
+Hopping cannot beat a barrage jammer that covers the whole band, or a strong
+jammer close to the drone. Against those, only power, directional antennas,
+changing band, spreading gain or a lower data rate help.
+
+**Testing must never radiate a jamming signal.** Transmitting one without
+authorisation is illegal in India and most other countries. Tests use a cabled
+setup with attenuators, a shielded RF enclosure, or simulation (for example
+GNU Radio).
 
 ## License
 
